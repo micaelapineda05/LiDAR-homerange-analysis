@@ -12,13 +12,27 @@ library(dplyr)
 # Assuming your capture data has: individualID, x, y, timestamp
 # You'll need to convert your coordinates to lat/long if they're not already
 
-capture_ctmm <- joined_df %>%
+## Note (Scott) : The location-long and location-lat that you are assigning here
+## are NOT lat/long, but rather the relative location of each stake in the 
+## laser-scan.  The "geometry" column as the locations as UTMs, which can be 
+## converted to lat/long, though these then need to be re-matched with their locations
+## within the laser-scan grid (not a big deal since we already have those).
+
+## SMA: Re-project geographic coordinates into WGS84 lat/long, and create columns for each (lat & long):
+joined_df <- joined_df |>
+  mutate(geometry_wgs84 = st_transform(geometry,"WGS84")) |> # Reproject to lat/lon WGS84
+  mutate(proj_point_wgs84 = st_coordinates(geometry_wgs84)) |> # Create a new column from the WGS84 geometry column that stores the x/y coordinates as numbers
+  mutate(stake_lon_X = proj_point_wgs84[,"X"]) |> # Extract the projected X (longitude) coordinate
+  mutate(stake_lat_Y = proj_point_wgs84[,"Y"])  # Extract the projected Y (latitude) coordinate
+
+
+capture_ctmm <- joined_df |>
   rename(
     `individual.local.identifier` = PITnum,
     timestamp = Date,  # Replace with your date column name
-    `location-long` = laser_stake_x,
-    `location-lat` = laser_stake_y
-  ) %>%
+    `location-long` = stake_lat_Y, ## SMA: changed referenced columns here to use the lat/long generated above rather than local relative laser-scan coordinates
+    `location-lat` = stake_lat_Y ## SMA: changed referenced columns here to use the lat/long generated above rather than local relative laser-scan coordinates
+  ) |>
   mutate(timestamp = as.POSIXct(timestamp))  # Ensure proper datetime format
 
 # Step 2: Clean your data - remove or aggregate duplicate timestamps
