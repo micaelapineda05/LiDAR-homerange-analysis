@@ -25,14 +25,13 @@ joined_df <- joined_df |>
   mutate(stake_lon_X = proj_point_wgs84[,"X"]) |> # Extract the projected X (longitude) coordinate
   mutate(stake_lat_Y = proj_point_wgs84[,"Y"])  # Extract the projected Y (latitude) coordinate
 
-
-capture_ctmm <- joined_df |>
+capture_ctmm <- joined_df %>%
   rename(
     `individual.local.identifier` = PITnum,
     timestamp = Date,  # Replace with your date column name
-    `location-long` = stake_lat_Y, ## SMA: changed referenced columns here to use the lat/long generated above rather than local relative laser-scan coordinates
-    `location-lat` = stake_lat_Y ## SMA: changed referenced columns here to use the lat/long generated above rather than local relative laser-scan coordinates
-  ) |>
+    `location-long` = laser_stake_x,
+    `location-lat` = laser_stake_y
+  ) %>%
   mutate(timestamp = as.POSIXct(timestamp))  # Ensure proper datetime format
 
 # Step 2: Clean your data - remove or aggregate duplicate timestamps
@@ -60,7 +59,7 @@ telem <- as.telemetry(capture_ctmm_clean)
 sample_sizes <- sapply(telem, nrow)
 cat("\nSample size summary:\n")
 print(summary(sample_sizes))
-cat("\nIndividuals with < 3 observations:", sum(sample_sizes < 3), "\n")
+cat("\nIndividuals with ≥ 3 observations:", sum(sample_sizes >= 3), "\n")
 
 ###Data:2–4 locations per individual
 ####Often same trap locations reused
@@ -68,57 +67,51 @@ cat("\nIndividuals with < 3 observations:", sum(sample_sizes < 3), "\n")
 
 # Step 5: Fit AKDE only for individuals with enough data
 # The paper suggests AKDE needs ~5-9 observations minimum
-min_obs <- 3
 akde_results <- list()
 akde_areas <- data.frame()
 failed_individuals <- character()
 
-for(i in 1:length(telem)) {
+for(i in seq_along(telem)) {
+  
   individual_id <- names(telem)[i]
   n_obs <- nrow(telem[[i]])
   
-  cat("Processing individual:", individual_id, "with", n_obs, "observations\n")
-  
-  # Skip if too few observations
-  if(n_obs < min_obs) {
-    cat("  Skipping - too few observations\n")
-    failed_individuals <- c(failed_individuals, individual_id)
-    next
-  }
+  cat("Processing individual:", individual_id,
+      "with", n_obs, "observations\n")
   
   tryCatch({
-    # Fit variogram (movement model)
-    # For trap data, use IID model
+    
     GUESS <- ctmm.guess(telem[[i]], interactive = FALSE)
+    FIT   <- ctmm.fit(telem[[i]], GUESS)
+    akde_i <- akde(telem[[i]], FIT)
     
-    # Fit the model
-    FIT <- ctmm.fit(telem[[i]], GUESS)
+    akde_results[[individual_id]] <- akde_i
     
-    # Calculate AKDE
-    akde <- akde(telem[[i]], FIT)
+    area_summary <- summary(akde_i)
     
-    # Store results
-    akde_results[[individual_id]] <- akde
+    # Correct extraction (single-row CI)
+    area_95      <- area_summary$CI[1, "est"]
+    area_95_low  <- area_summary$CI[1, "low"]
+    area_95_high <- area_summary$CI[1, "high"]
     
-    # Extract 95% area (in m²)
-    area_summary <- summary(akde)
-    area_95 <- area_summary$CI[2, "est"]  # 95% area estimate
-    area_95_low <- area_summary$CI[2, "low"]
-    area_95_high <- area_summary$CI[2, "high"]
+    akde_areas <- rbind(
+      akde_areas,
+      data.frame(
+        individualID = individual_id,
+        area_akde_95 = area_95,
+        area_akde_95_low = area_95_low,
+        area_akde_95_high = area_95_high,
+        n_observations = n_obs
+      )
+    )
     
-    akde_areas <- rbind(akde_areas, data.frame(
-      individualID = individual_id,
-      area_akde_95 = area_95,
-      area_akde_95_low = area_95_low,
-      area_akde_95_high = area_95_high,
-      n_observations = n_obs
-    ))
-    
-    cat("  Success! Area:", round(area_95, 2), "m²\n")
+    cat("  Success! Area:", round(area_95, 2), "\n")
     
   }, error = function(e) {
+    
     cat("  Error:", e$message, "\n")
     failed_individuals <<- c(failed_individuals, individual_id)
+    
   })
 }
 
@@ -126,60 +119,81 @@ for(i in 1:length(telem)) {
 cat("\n=== AKDE Summary ===\n")
 cat("Successfully processed:", length(akde_results), "individuals\n")
 cat("Failed:", length(failed_individuals), "individuals\n")
-cat("Too few observations (<", min_obs, "):", sum(sample_sizes < min_obs), "\n")
 
 # View results
 print(akde_areas)
 
 area_summary <- summary(akde)
-area_95 <- area_summary$CI[2, "est"]
+
+str(area_summary$CI)
+dim(area_summary$CI)
+colnames(area_summary$CI)
+
 
 summary(akde)
 
 str(summary(akde))
 
+table(sapply(akde_results, function(x) is.null(x$UD)))
 
-# Step 6: Compare AKDE to MCP for individuals with both
-comparison <- akde_areas %>%
-  left_join(mcp_geoms %>% 
-              st_drop_geometry() %>%
-              select(id, area) %>%
-              rename(individualID = id, area_mcp = area),
-            by = "individualID") %>%
-  mutate(
-    ratio_akde_mcp = area_akde_95 / area_mcp,
-    difference_m2 = area_akde_95 - area_mcp
-  )
 
-print(comparison)
+# Step 6: Convert AKDE to sf polygons for mapping
+library(ctmm)
+library(sf)
 
-# Summary statistics
-cat("\n=== AKDE vs MCP Comparison ===\n")
-cat("Mean AKDE/MCP ratio:", round(mean(comparison$ratio_akde_mcp, na.rm = TRUE), 2), "\n")
-cat("Median AKDE/MCP ratio:", round(median(comparison$ratio_akde_mcp, na.rm = TRUE), 2), "\n")
-cat("AKDE typically larger:", sum(comparison$area_akde_95 > comparison$area_mcp, na.rm = TRUE), "\n")
-cat("MCP typically larger:", sum(comparison$area_akde_95 < comparison$area_mcp, na.rm = TRUE), "\n")
-
-# Step 7: Convert AKDE to sf polygons for mapping
 akde_sf_list <- list()
 
-for(i in 1:length(akde_results)) {
+for (i in seq_along(akde_results)) {
+  
   individual_id <- names(akde_results)[i]
   
   tryCatch({
-    # Extract 95% contour as SpatialPolygonsDataFrame
-    contour <- SpatialPolygonsDataFrame.UD(akde_results[[i]], level.UD = 0.95)
     
-    # Convert to sf
-    akde_sf <- st_as_sf(contour)
+    ud <- akde_results[[i]]$UD
+    
+    if (is.null(ud)) {
+      stop("UD is NULL (home range not estimable)")
+    }
+    
+    contour <- SpatialPolygonsDataFrame.UD(ud, level.UD = 0.95)
+    akde_sf  <- st_as_sf(contour)
+    
     akde_sf$individualID <- individual_id
-    akde_sf$area <- akde_areas$area_akde_95[akde_areas$individualID == individual_id]
+    akde_sf$area <- akde_areas$area_akde_95[
+      akde_areas$individualID == individual_id
+    ]
     
-    akde_sf_list[[i]] <- akde_sf
+    akde_sf_list[[individual_id]] <- akde_sf
+    
   }, error = function(e) {
-    cat("Failed to convert", individual_id, "to sf:", e$message, "\n")
+    cat("Skipped", individual_id, ":", e$message, "\n")
   })
 }
+
+sum(!sapply(akde_results, function(x) is.null(x$UD)))
+
+akde_results_grid <- list()
+
+for (id in names(telem)) {
+  
+  tryCatch({
+    
+    fit <- ctmm.fit(telem[[id]], guess)
+    
+    UD  <- akde(telem[[id]], fit, grid = 500)
+    
+    akde_results_grid[[id]] <- UD
+    
+  }, error = function(e) {
+    message("Failed AKDE with grid for ", id)
+  })
+}
+
+sum(!sapply(akde_results_grid, function(x) is.null(x$UD)))
+
+###-----------------------------------------------------
+###This is still not working, ALL indivudals fail....
+###-----------------------------------------------------
 
 # Combine all individuals
 if(length(akde_sf_list) > 0) {
@@ -187,7 +201,7 @@ if(length(akde_sf_list) > 0) {
   cat("\nSuccessfully created sf polygons for", nrow(akde_all_sf), "individuals\n")
 }
 
-# Step 8: Visualize one example
+# Step 7: Visualize one example
 if(length(akde_results) > 0) {
   example_id <- names(akde_results)[1]
   
@@ -235,19 +249,19 @@ joined_df_2 <- joined_df_2 %>%
          plot_pitnum = paste(plot_id_clean, pitnum_rounded, sep = "_")
   )
 
-coords <- joined_df_2[, c("laser_stake_x", "laser_stake_y")]
+coords <- joined_df[, c("stake_lon_X", "stake_lat_Y")]
 
 # Remove rows with NA coordinates
-joined_df_clean <- joined_df_2 %>%
+joined_df_clean <- joined_df %>%
   filter(!is.na(laser_stake_x), !is.na(laser_stake_y))
 
 # Check how many rows were removed
-cat("Original rows:", nrow(joined_df_2), "\n")
+cat("Original rows:", nrow(joined_df), "\n")
 cat("Clean rows:", nrow(joined_df_clean), "\n")
-cat("Removed:", nrow(joined_df_2) - nrow(joined_df_clean), "rows with NA coordinates\n")
+cat("Removed:", nrow(joined_df) - nrow(joined_df_clean), "rows with NA coordinates\n")
 
 # Now create the SpatialPointsDataFrame
-coords <- cbind(joined_df_clean$x, joined_df_clean$y)
+coords <- cbind(joined_df_clean$laser_stake_x, joined_df_clean$laser_stake_y)
 
 spdf <- SpatialPointsDataFrame(
   coords = coords,
@@ -264,7 +278,11 @@ spdf <- SpatialPointsDataFrame(
   proj4string = CRS("+proj=utm +zone=31 +ellps=WGS84")
 )
 
-kde_all <- kernelUD(spdf[, "plot_pitnum"], 
+kde_all <- kernelUD(spdf[, "PITnum"], 
                     h = "href",  # Bandwidth selection method
                     grid = 500,
                     extent = 0.5)
+
+###--------------------------------------------
+###This method is not working either!!
+###--------------------------------------------
