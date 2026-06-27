@@ -11,15 +11,13 @@ library(lubridate)
 library(sf)
 ##### Import / Combine Data #####
 ### Load Smam Capture Data from 2020
-SMAMDATA <- read_excel("C:/Users/PinedaMicaelaTonatsi/Documents/Small_mammal_capture data_Scott/RTG 2300 SP7 - Capture Data - 2020 July-September.xlsx") ## Load July-August-September 2020 Capture Data
+SMAMDATA <- read_excel("data/RTG 2300 SP7 - Capture Data - 2020 July-September.xlsx") ## Load July-August-September 2020 Capture Data
 
-------------------------------------------------------------
+#------------------------------------------------------------
   ###Add xy columns to capture data for coordinate locations
-------------------------------------------------------------
+#------------------------------------------------------------
   # Read in the trap coordinates
-trap_coords <- read.table("C:/Users/PinedaMicaelaTonatsi/Documents/Small_mammal_capture data_Scott/RTG 2300 SP7 - Basic Trap Layout 64 points.txt", 
-                            header = TRUE, 
-                            sep = "\t")
+trap_coords <- read_excel("data/RTG 2300 SP7 - Basic Trap Layout 64 points.xlsx")
   
 # Join the coordinates to your capture data
 SMAMDATA_2 <- SMAMDATA %>%
@@ -39,9 +37,9 @@ cleaned_data <- filtered_data %>%
 
 unique(cleaned_data$PITnum)
   
--------------------------------------------
+#-------------------------------------------
     ##Separate plots
--------------------------------------------
+#-------------------------------------------
   
   # Create all site objects
 for(i in 1:8) {
@@ -94,9 +92,9 @@ for (df_name in df_names) {
 
 # Now valid_pits_list is a named list with data frame names as keys
 # and vectors of valid PITs as values
-------------------------------
+#------------------------------
 ###Inspecting the pit_list
-------------------------------
+#------------------------------
   # View all PITs for Plot_1.1
 valid_pits_list["Plot_1.5"]
 
@@ -127,7 +125,7 @@ for (df_name in df_names) {
   assign(paste0(df_name, "_filtered"), filtered_df)
 }
 
-###Before creating MCPs add in the xy coords from the matching values for the raters!
+###Before creating MCPs add in the xy coords from the matching values for the rasters!
 # Create a data frame from the filtered plots list
 nw_df <- do.call(rbind, lapply(names(filtered_plots_list), function(name) {
   df <- filtered_plots_list[[name]]
@@ -142,7 +140,7 @@ table(nw_df$plot_id)  # Should show all plots, not just Plot_8.5
 
 ####Join with the coords from the grid with matching xy coords from the raster data
 # Load an RData file
-load("C:/Users/PinedaMicaelaTonatsi/Documents/LiDAR Collab/laser_grid_stakes.rda")
+load("data/laser_grid_stakes.rda")
 
 laser_grid_coords <- laser_grid_stakes %>%
   select(-geometry)
