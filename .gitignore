@@ -51,3 +51,6 @@ rsconnect/
 
 # Mac System File
 .DS_Store
+
+# Laser Scans Folder
+data/Normalized_scans/
