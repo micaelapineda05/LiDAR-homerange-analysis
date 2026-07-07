@@ -117,6 +117,7 @@ st_crs(ud95_sf)
 
 graphics.off()
 
+###Plot
 ggplot() +
   geom_sf(data = cover_1.2,
           aes(color = canopy_cover),
@@ -150,12 +151,3 @@ ggplot() +
   geom_sf(data = pts,
           colour = "yellow",
           size = 2)
-
-
-x <- as.telemetry(dat[["900200000718829"]])
-
-GUESS <- ctmm.guess(x, interactive = FALSE)
-
-FIT <- ctmm.fit(x, GUESS)
-
-summary(FIT)
