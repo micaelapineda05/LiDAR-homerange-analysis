@@ -4,44 +4,47 @@ library(ggplot2)
 
 laser_grid_stakes <- st_as_sf(laser_grid_stakes)
 
-plot32 <- laser_grid_stakes %>%
-  filter(id_plot == "3.2")
+coords <- st_coordinates(laser_grid_stakes)
 
-coords <- st_coordinates(plot32)
+laser_grid_stakes <- cbind(laser_grid_stakes, coords)
 
-plot32 <- cbind(plot32, coords)
+plot_models <- list()
 
-head(plot32)
+plots <- unique(laser_grid_stakes$id_plot)
 
-fit_x <- lm(X ~ laser_stake_x + laser_stake_y, data = plot32)
+plot_models <- list()
 
-fit_y <- lm(Y ~ laser_stake_x + laser_stake_y, data = plot32)
+plot_models <- list()
 
-summary(fit_x)
-summary(fit_y)
-
-plot32$X_pred <- predict(fit_x)
-plot32$Y_pred <- predict(fit_y)
-
-sqrt((plot32$X - plot32$X_pred)^2 +
-       (plot32$Y - plot32$Y_pred)^2) |> summary()
-
-
-###Offset coords
-plot_offsets <- laser_grid_stakes %>%
-  st_as_sf() %>%
-  mutate(
-    UTM_X = st_coordinates(.)[,1],
-    UTM_Y = st_coordinates(.)[,2]
-  ) %>%
-  st_drop_geometry() %>%
-  group_by(id_plot) %>%
-  summarise(
-    offset_x = mean(UTM_X - laser_stake_x),
-    offset_y = mean(UTM_Y - laser_stake_y),
-    .groups = "drop"
+for (p in plots) {
+  
+  dat <- laser_grid_stakes %>%
+    filter(id_plot == p)
+  
+  if(all(is.na(dat$laser_stake_x)) ||
+     all(is.na(dat$laser_stake_y))) {
+    
+    message("Skipping ", p)
+    next
+  }
+  
+  dat_model <- dat %>%
+    rename(
+      x = laser_stake_x,
+      y = laser_stake_y
+    )
+  
+  fit_x <- lm(X ~ x + y, data = dat_model)
+  fit_y <- lm(Y ~ x + y, data = dat_model)
+  
+  plot_models[[p]] <- list(
+    fit_x = fit_x,
+    fit_y = fit_y
   )
+}
 
+
+plot_num <- "1.2"
 
 ## Read in LiDAR CSV files
 
@@ -55,44 +58,23 @@ canopycover_1.2 <- read.csv("C:/Users/PinedaMicaelaTonatsi/Documents/LiDAR Colla
 
 roughness_1.2 <- read.csv("C:/Users/PinedaMicaelaTonatsi/Documents/LiDAR Collab/New_2026_normalized/Wetransfer_results_2026-02-06/July/roughness csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyRauigkeiten.csv", sep = ";", dec = ",")
 
-offset_1.2 <- plot_offsets %>%
-  filter(id_plot == "1.2")
+cover <- canopycover_1.2
 
-cover_1.2 <- canopycover_1.2 %>%
-  mutate(
-    UTM_X = x + offset_1.2$offset_x,
-    UTM_Y = y + offset_1.2$offset_y
-  )
+cover$UTM_X <- predict(
+  plot_models[[plot_num]]$fit_x,
+  newdata = cover
+)
 
-roughness_1.2 <- roughness_1.2 %>%
-  mutate(
-    UTM_X = x + offset_1.2$offset_x,
-    UTM_Y = y + offset_1.2$offset_y
-  )
+cover$UTM_Y <- predict(
+  plot_models[[plot_num]]$fit_y,
+  newdata = cover
+)
 
-layering_1.2 <- layering_1.2 %>%
-  mutate(
-    UTM_X = x + offset_1.2$offset_x,
-    UTM_Y = y + offset_1.2$offset_y
-  )
-
-filling_1.2 <- filling_1.2 %>%
-  mutate(
-    UTM_X = x + offset_1.2$offset_x,
-    UTM_Y = y + offset_1.2$offset_y
-  )
-
-
-filling_2_1.2 <- filling_2_1.2 %>%
-  mutate(
-    UTM_X = x + offset_1.2$offset_x,
-    UTM_Y = y + offset_1.2$offset_y
-  )
 
 ###Test one
 
 canopycover_sf <- st_as_sf(
-  cover_1.2,
+  cover,
   coords = c("UTM_X", "UTM_Y"),
   crs = 25832
 )
@@ -127,27 +109,3 @@ ggplot() +
           color = "red",
           linewidth = 1)
 
-ggplot() +
-  geom_sf(data = canopycover_sf)
-
-ggplot() +
-  geom_sf(data = ud95_sf)
-
-pts <- st_as_sf(
-  joined_df %>%
-    filter(PITnum == "900200000718873"),
-  coords = c("laser_stake_X", "laser_stake_Y"),
-  crs = 25832
-)
-
-ggplot() +
-  geom_raster(
-    data = canopycover_sf,
-    aes(lasers_X, UTM_Y, fill = canopy_cover)
-  ) +
-  geom_sf(data = ud95_sf,
-          fill = NA,
-          colour = "red") +
-  geom_sf(data = pts,
-          colour = "yellow",
-          size = 2)
