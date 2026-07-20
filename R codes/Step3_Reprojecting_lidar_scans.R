@@ -2,11 +2,17 @@ library(sf)
 library(dplyr)
 library(ggplot2)
 
+###Set stake locations as sf
+
 laser_grid_stakes <- st_as_sf(laser_grid_stakes)
+
+##Extract coords
 
 coords <- st_coordinates(laser_grid_stakes)
 
 laser_grid_stakes <- cbind(laser_grid_stakes, coords)
+
+##Make list of plot IDs
 
 plot_models <- list()
 
@@ -14,7 +20,7 @@ plots <- unique(laser_grid_stakes$id_plot)
 
 plot_models <- list()
 
-plot_models <- list()
+##Predict UTM coordinates using a transformation
 
 for (p in plots) {
   
