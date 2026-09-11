@@ -105,7 +105,7 @@ st_crs(ud95_sf)
 
 graphics.off()
 
-###Plot
+###Plot w/ capture locations for this individual
 ggplot() +
   geom_sf(data = cover_1.2,
           aes(color = canopy_cover),
@@ -113,5 +113,13 @@ ggplot() +
   geom_sf(data = ud95_sf,
           fill = NA,
           color = "red",
-          linewidth = 1)
+          linewidth = 1) +
+  geom_sf(data = laser_grid_stakes |>
+            filter(id_plot=="1.2"),
+          color="purple") +
+  geom_sf(data=joined_df |>
+            filter(id_plot=="1.2") |>
+            filter(TrapNum%in%(joined_df|>filter(PITnum=="900200000718873",id_plot=="1.2")|>pull(TrapNum)))|>
+            pull(geometry),
+            color="red")
 
