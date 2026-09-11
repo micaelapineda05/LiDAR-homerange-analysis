@@ -156,3 +156,9 @@ joined_df <- nw_df %>%
     laser_grid_stakes,
     by = c("plot_id_clean", "TrapNum" = "stake")
   )
+
+laser_grid_stakes <- laser_grid_stakes |>
+  rename(id_plot = plot_id_clean)
+
+joined_df <- joined_df |>
+  rename(id_plot = plot_id_clean)

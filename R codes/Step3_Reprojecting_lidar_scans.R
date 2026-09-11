@@ -54,15 +54,15 @@ plot_num <- "1.2"
 
 ## Read in LiDAR CSV files
 
-layering_1.2 <- read.csv("C:/Users/PinedaMicaelaTonatsi/Documents/LiDAR Collab/New_2026_normalized/Wetransfer_results_2026-02-06/July/layering csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyLayering.csv", sep = ";", dec = ",")
+layering_1.2 <- read.csv("data/normalized_scans_with_headers/July/layering csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyLayering.csv", sep = ";", dec = ",")
 
-filling_1.2 <- read.csv("C:/Users/PinedaMicaelaTonatsi/Documents/LiDAR Collab/New_2026_normalized/Wetransfer_results_2026-02-06/July/filling csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyFilling_layer1-10.csv", sep = ",", dec = ".")
+filling_1.2 <- read.csv("data/normalized_scans_with_headers/July/filling csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyFilling_layer1-10.csv", sep = ",", dec = ".")
 
-filling_2_1.2 <- read.csv2("C:/Users/PinedaMicaelaTonatsi/Documents/LiDAR Collab/New_2026_normalized/wetransfer_results_2026-02-06/July/filling2 csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyFilling_layer11-20.csv", sep = ",", dec = ".")
+filling_2_1.2 <- read.csv2("data/normalized_scans_with_headers/July/filling2 csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyFilling_layer11-20.csv", sep = ",", dec = ".")
 
-canopycover_1.2 <- read.csv("C:/Users/PinedaMicaelaTonatsi/Documents/LiDAR Collab/New_2026_normalized/Wetransfer_results_2026-02-06/July/canopy cover csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyCanopycover.csv", sep = ";", dec = ",")
+canopycover_1.2 <- read.csv("data/normalized_scans_with_headers/July/canopy cover csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyCanopycover.csv", sep = ";", dec = ",")
 
-roughness_1.2 <- read.csv("C:/Users/PinedaMicaelaTonatsi/Documents/LiDAR Collab/New_2026_normalized/Wetransfer_results_2026-02-06/July/roughness csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyRauigkeiten.csv", sep = ";", dec = ",")
+roughness_1.2 <- read.csv("data/normalized_scans_with_headers/July/roughness csv/1.2_Subsampling_Remove Outliers_Normalize by Ground Points_Convert to ASCII.txt_xyRauigkeiten.csv", sep = ";", dec = ",")
 
 cover <- canopycover_1.2
 
