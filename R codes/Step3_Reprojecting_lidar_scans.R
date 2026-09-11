@@ -49,6 +49,9 @@ for (p in plots) {
   )
 }
 
+### SMA NOTE: The below needs to be turned into some sort of loop/serial processing 
+## step to convert the relative coordinates from each of the laser scanning layers 
+## (BY PLOT) to the geographic coordinate system for later use in analyses
 
 plot_num <- "1.2"
 
