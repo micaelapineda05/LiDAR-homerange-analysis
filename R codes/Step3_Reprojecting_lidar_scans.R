@@ -78,17 +78,22 @@ cover$UTM_Y <- predict(
 
 
 ###Test one
-
+## Turn the canopy cover into an SF object using the model predicted UTMs derived above
 canopycover_sf <- st_as_sf(
   cover,
   coords = c("UTM_X", "UTM_Y"),
   crs = 25832
 )
 
+## Convert the UTM locations to WGS84 for plotting
+## (SMA note: this is not necessary unless you want the axis labels to be in decimal degrees)
 cover_1.2 <- st_transform(
   canopycover_sf,
   4326
 )
+
+## Assign the canopy cover object with the UTM CRS as the one to be used below
+cover_1.2 <- canopycover_sf
 
 ##Find an individual for the plot
 
@@ -105,8 +110,17 @@ st_crs(ud95_sf)
 
 graphics.off()
 
+## Get a Niedersachsen outline to make sure the plots are in the right area
+library(rnaturalearth)
+# Import all German federal states as an 'sf' object
+germany_states <- ne_states(country = "germany", returnclass = "sf")
+# Filter to Niedersachsen
+niedersachsen_outline <- germany_states |> filter(name == "Niedersachsen")
+
+
 ###Plot w/ capture locations for this individual
 ggplot() +
+  #geom_sf(data = niedersachsen_outline, fill = "lightblue", color = "black", size = 0.5) + # Niedersachsen underlying map, comment out to zoom in on a plot
   geom_sf(data = cover_1.2,
           aes(color = canopy_cover),
           size = 0.5) +
