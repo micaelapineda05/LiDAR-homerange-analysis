@@ -263,7 +263,7 @@ get_kde50 <- function(ud) {
   
   ud50_sf <- st_as_sf(ud50)
   
-  # Keep only the estimated 50% isopleth
+  # Keep only the estimated 50% 
   ud50_est <- ud50_sf %>%
     filter(grepl("50% est", name))
   
@@ -292,8 +292,8 @@ plot <- unique(res_success %>%
 
 plot
 
-canopy <- lidar_corrected[[4.2]]$canopycover
-
+canopy <- lidar_corrected_wgs84["4.2"]$canopycover
+kde50_test <- st_transform(kde50_test, st_crs(canopy))
 canopy_kde50 <- st_filter(
   canopy,
   kde50_test
@@ -301,6 +301,9 @@ canopy_kde50 <- st_filter(
 
 nrow(canopy_kde50)
 
+plot(canopy)
+
+plot(canopy_kde50, add= TRUE)
 ggplot() +
   geom_sf(data = canopy, size = 0.5) +
   geom_sf(data = kde50_test_utm, fill = NA, linewidth = 1) +
