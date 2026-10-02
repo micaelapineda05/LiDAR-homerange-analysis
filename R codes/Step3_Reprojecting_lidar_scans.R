@@ -1,6 +1,7 @@
 library(sf)
 library(dplyr)
 library(ggplot2)
+library(tibble)
 
 ###Set stake locations as sf
 
@@ -49,9 +50,13 @@ for (p in plots) {
   )
 }
 
+<<<<<<< HEAD
+###To change plot number start changing here
+=======
 ### SMA NOTE: The below needs to be turned into some sort of loop/serial processing 
 ## step to convert the relative coordinates from each of the laser scanning layers 
 ## (BY PLOT) to the geographic coordinate system for later use in analyses
+>>>>>>> 85df5c2e37d782a46d088c0104da0c59f0ad9870
 
 plot_num <- "1.2"
 
@@ -69,6 +74,8 @@ roughness_1.2 <- read.csv("data/normalized_scans_with_headers/July/roughness csv
 
 cover <- canopycover_1.2
 
+##takes the new Lidar points and determines given this points local x and y what are the real world UTM's
+
 cover$UTM_X <- predict(
   plot_models[[plot_num]]$fit_x,
   newdata = cover
@@ -79,7 +86,6 @@ cover$UTM_Y <- predict(
   newdata = cover
 )
 
-
 ###Test one
 ## Turn the canopy cover into an SF object using the model predicted UTMs derived above
 canopycover_sf <- st_as_sf(
@@ -88,8 +94,10 @@ canopycover_sf <- st_as_sf(
   crs = 25832
 )
 
+
 ## Convert the UTM locations to WGS84 for plotting
 ## (SMA note: this is not necessary unless you want the axis labels to be in decimal degrees)
+
 cover_1.2 <- st_transform(
   canopycover_sf,
   4326
@@ -139,4 +147,60 @@ ggplot() +
             filter(TrapNum%in%(joined_df|>filter(PITnum=="900200000718873",id_plot=="1.2")|>pull(TrapNum)))|>
             pull(geometry),
             color="red")
+
+###Check transformation for each plot
+
+transformation_summary <- bind_rows(
+  lapply(names(plot_models), function(p) {
+    
+    bx <- coef(plot_models[[p]]$fit_x)
+    by <- coef(plot_models[[p]]$fit_y)
+    
+    tibble(
+      plot = p,
+      
+      # X model
+      X_intercept = bx["(Intercept)"],
+      X_from_x    = bx["x"],
+      X_from_y    = bx["y"],
+      
+      # Y model
+      Y_intercept = by["(Intercept)"],
+      Y_from_x    = by["x"],
+      Y_from_y    = by["y"]
+    )
+  })
+)
+
+transformation_summary
+
+
+## Get a Niedersachsen outline to make sure the plots are in the right area
+library(rnaturalearth)
+# Import all German federal states as an 'sf' object
+germany_states <- ne_states(country = "germany", returnclass = "sf")
+# Filter to Niedersachsen
+niedersachsen_outline <- germany_states |> filter(name == "Niedersachsen")
+
+
+###Plot w/ capture locations for this individual
+ggplot() +
+  #geom_sf(data = niedersachsen_outline, fill = "lightblue", color = "black", size = 0.5) + # Niedersachsen underlying map, comment out to zoom in on a plot
+  geom_sf(data = cover_1.2,
+          aes(color = canopy_cover),
+          size = 0.5) +
+  geom_sf(data = ud95_sf,
+          fill = NA,
+          color = "red",
+          linewidth = 1) +
+  geom_sf(data = laser_grid_stakes |>
+            filter(id_plot=="1.2"),
+          color="purple") +
+  geom_sf(data=joined_df |>
+            filter(id_plot=="1.2") |>
+            filter(TrapNum%in%(joined_df|>filter(PITnum=="900200000718873",id_plot=="1.2")|>pull(TrapNum)))|>
+            pull(geometry),
+          color="red")
+
+
 
