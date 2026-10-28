@@ -168,8 +168,9 @@ for (plot_num in names(plot_models)) {
     return(dat_sf)
   })
   
-  
-  # Store results
+  ##----------------------------------------
+  # Store results lat/lon stored as geometry
+  ##-----------------------------------------
   lidar_corrected[[plot_num]] <- datasets_corrected
   
 }
@@ -185,6 +186,10 @@ lidar_corrected_wgs84 <- lapply(
     
   }
 )
+
+####
+##Adding plot ID and species back into the UD
+#####
 
 joined_df <- joined_df %>%
   mutate(PITnum = format(PITnum, scientific = FALSE, trim = TRUE))
@@ -233,6 +238,12 @@ res_success <- res_ids %>%
 View(res_success)
 
 sum(is.na(res_success$plot_id))
+
+
+
+###
+##Test plot
+###
 
 ud <- res[[ud_ids[1]]]
 
@@ -308,3 +319,9 @@ ggplot() +
   geom_sf(data = canopy, size = 0.5) +
   geom_sf(data = kde50_test_utm, fill = NA, linewidth = 1) +
   theme_minimal()
+
+###
+
+
+
+
